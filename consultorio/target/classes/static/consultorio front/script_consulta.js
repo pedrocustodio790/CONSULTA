@@ -1,70 +1,76 @@
-const API_BASE = 'http://localhost:8080';
-
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('consulta-form');
-  const listarBtn = document.getElementById('listarConsultas');
-
-  form.addEventListener('submit', async event => {
+document.addEventListener('DOMContentLoaded', function () {
+  // Agendamento da consulta
+  document.getElementById('consulta-form').addEventListener('submit', async function (event) {
     event.preventDefault();
 
-    const consulta = {
-      dataHora: form.dataHora.value,
-      motivo: form.motivo.value.trim(),
-      medicoId: parseInt(form.medicoId.value),
-      pacienteId: parseInt(form.pacienteId.value),
-      retorno: form.retorno.value === 'true',
-      atestado: form.atestado.value.trim()
+    const dataHora = document.getElementById('dataHora').value;
+    const motivo = document.getElementById('motivo').value;
+    const medicoId = document.getElementById('medicoId').value;
+    const pacienteId = document.getElementById('pacienteId').value;
+    const retorno = document.getElementById('retorno').value;
+    const atestado = document.getElementById('atestado').value;
+    const valorConsulta = parseFloat(document.getElementById('valorConsulta').value);
+
+    const consultaDTO = {
+      dataHora,
+      motivo,
+      medicoId: parseInt(medicoId),
+      pacienteId: parseInt(pacienteId),
+      retorno: retorno === 'true',
+      atestado,
+      valorConsulta
     };
-    console.log('Enviando consulta:', consulta);
 
     try {
-      const response = await fetch(`${API_BASE}/consultas`, {
+      const response = await fetch('http://localhost:8080/consultas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(consulta)
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(consultaDTO)
       });
 
       if (!response.ok) throw new Error('Erro ao agendar consulta');
 
       alert('Consulta agendada com sucesso!');
-      form.reset();
-      carregarConsultas();
+      document.getElementById('consulta-form').reset();
+      listarConsultas(); // Atualiza a tabela automaticamente
     } catch (error) {
-      alert(error.message);
+      alert(error);
     }
   });
 
-  listarBtn.addEventListener('click', carregarConsultas);
-  carregarConsultas();
-});
+  // Função para listar todas as consultas
+  async function listarConsultas() {
+    try {
+      const res = await fetch('http://localhost:8080/consultas');
+      if (!res.ok) throw new Error('Erro ao buscar consultas');
 
-async function carregarConsultas() {
-  try {
-    const response = await fetch(`${API_BASE}/consultas`);
-    if (!response.ok) throw new Error('Erro ao obter consultas');
+      const consultas = await res.json();
+      const tbody = document.querySelector('#consultas-table tbody');
+      tbody.innerHTML = '';
 
-    const consultas = await response.json();
-    const tbody = document.querySelector('#consultas-table tbody');
-    tbody.innerHTML = '';
-
-    consultas.forEach(c => {
-      const tr = document.createElement('tr');
-      tr.appendChild(criarTd(c.id));
-      tr.appendChild(criarTd(new Date(c.dataHora).toLocaleString()));
-      tr.appendChild(criarTd(c.motivo));
-      tr.appendChild(criarTd(c.nomeMedico));
-      tr.appendChild(criarTd(c.nomePaciente));
-      tr.appendChild(criarTd(c.retorno ? 'Sim' : 'Não'));
-      tr.appendChild(criarTd(c.atestado || ''));
-      tbody.appendChild(tr);
-    });
-  } catch (error) {
-    alert(error.message);
+      consultas.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${c.id}</td>
+          <td>${new Date(c.dataHora).toLocaleString()}</td>
+          <td>${c.motivo}</td>
+          <td>${c.nomeMedico}</td>
+          <td>${c.nomePaciente}</td>
+          <td>${c.retorno ? 'Sim' : 'Não'}</td>
+          <td>${c.atestado || ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error(err);
+    }
   }
-}
 
-function criarTd(valor) {
-  const td = document.createElement('td');
-  td.textContent = valor;
-  return td;
-}
+  // Atualizar tabela manualmente com botão
+  document.getElementById('listarConsultas').addEventListener('click', listarConsultas);
+
+  // Listar ao carregar a página
+  listarConsultas();
+});
